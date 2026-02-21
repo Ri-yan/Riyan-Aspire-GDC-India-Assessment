@@ -1,4 +1,11 @@
-# Gemini-Ai-Chatbot-Simple
+# Aspire GDC India Voice Agent 
+
+model used : gemini-2.5-flash-native-audio-preview-12-2025
+email service : emailJS
+
+<img width="1751" height="868" alt="image" src="https://github.com/user-attachments/assets/ae1ce33f-c6c0-4332-884c-606dc6aa2b5a" />
+
+on signout will sent email with conversation history apart from that it keep maintain history in local storage of browser
 
 ## 🌐 Overview  
 This project is a **real-time AI chatbot** built with **Node.js**, **Express**, **WebSockets**, and **Google’s Gemini API**.  
