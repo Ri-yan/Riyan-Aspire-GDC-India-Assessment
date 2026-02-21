@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+</head>
+
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+
+    <div class="flex flex-col items-center space-y-6">
+        <!-- Bot Avatar -->
+        <div
+            class="rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <img class="w-32 h-32 rounded-full"
+                src="https://i.pinimg.com/originals/af/7b/6e/af7b6ee82ae6de2df640d6d40c8fe8a4.gif" alt="">
+        </div>
+
+        <h1 class="text-2xl font-semibold tracking-wide" id="userName"></h1>
+        <!-- Title -->
+        <h2 class="text-2xl font-semibold tracking-wide">Talk to Buddy😎</h2>
+
+        <!-- Mic Button -->
+        <button id="micBtn"
+            class="w-16 h-16 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center shadow-xl transition duration-200 ease-in-out transform hover:scale-105">
+            <svg class="h-8 w-8 text-white" fill="#000000" height="200px" width="200px" version="1.1"
+                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" xmlns:xlink="http://www.w3.org/1999/xlink"
+                enable-background="new 0 0 512 512">
+                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                <g id="SVGRepo_iconCarrier">
+                    <g>
+                        <g>
+                            <path
+                                d="m439.5,236c0-11.3-9.1-20.4-20.4-20.4s-20.4,9.1-20.4,20.4c0,70-64,126.9-142.7,126.9-78.7,0-142.7-56.9-142.7-126.9 0-11.3-9.1-20.4-20.4-20.4s-20.4,9.1-20.4,20.4c0,86.2 71.5,157.4 163.1,166.7v57.5h-23.6c-11.3,0-20.4,9.1-20.4,20.4 0,11.3 9.1,20.4 20.4,20.4h88c11.3,0 20.4-9.1 20.4-20.4 0-11.3-9.1-20.4-20.4-20.4h-23.6v-57.5c91.6-9.3 163.1-80.5 163.1-166.7z">
+                            </path>
+                            <path
+                                d="m256,323.5c51,0 92.3-41.3 92.3-92.3v-127.9c0-51-41.3-92.3-92.3-92.3s-92.3,41.3-92.3,92.3v127.9c0,51 41.3,92.3 92.3,92.3zm-52.3-220.2c0-28.8 23.5-52.3 52.3-52.3s52.3,23.5 52.3,52.3v127.9c0,28.8-23.5,52.3-52.3,52.3s-52.3-23.5-52.3-52.3v-127.9z">
+                            </path>
+                        </g>
+                    </g>
+                </g>
+            </svg>
+        </button>
+
+        <button id="micBtnOut"
+            class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-sm transition duration-200 ease-in-out">
+            SignOut send email
+        </button>
+        <!-- Status -->
+        <p id="status" class="text-gray-400 text-sm">Click mic to start</p>
+    </div>
+
+
+    <script>
+        var username = localStorage.getItem("demo_userName");
+        if (username === null || username === "" || username === undefined) {
+
+            let userName = prompt("Please enter your name:", "Guest");
+            let email = prompt("Please enter your email:", "Guest");
+            if (userName !== null && email !== null) {
+                alert("Hello, " + userName + "!");
+                localStorage.setItem("demo_userName", userName);
+                localStorage.setItem("demo_email", email);
+                document.getElementById("userName").innerText = "Welcome, " + userName + "!";
+            } else {
+                alert("Username and Email required");
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            }
+        } else {
+            document.getElementById("userName").innerText = "Welcome back, " + username + "!";
+        }
+        // Initialize EmailJS with your public key
+        emailjs.init('bkWFF_2orSX6VzMJz');
+
+        // Function to send email
+        async function sendEmail() {
+            event.preventDefault(); // Prevent form submission
+
+            const serviceId = 'service_6xdy3d9';
+            const templateId = 'template_dj2smtn';
+            let chat_history = localStorage.getItem("chat_history");
+            const form = {
+                user_name: localStorage.getItem("demo_userName") || "Guest",
+                message: chat_history,
+                user_email: document.getElementById("user_email")
+            };
+            console.log("Form data:", form); // Debugging log
+            try {
+                if (chat_history != null || chat_history != undefined || chat_history != "")
+                    await emailjs.send(serviceId, templateId, form);
+                else
+                    alert("No conversation history to send.");
+                alert("Email sent successfully!");
+            } catch (error) {
+                console.error("Failed to send email:", error);
+                alert("There was an error sending your message. Please try again later.");
+            }
+        }
+        micBtnOut.onclick = async () => {
+            localStorage.removeItem("demo_userName");
+            localStorage.removeItem("demo_email");
+            localStorage.removeItem("chat_history");
+            await sendEmail();
+            alert("You have been signed out.");
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        };
+
+        const micBtn = document.getElementById("micBtn");
+        const status = document.getElementById("status");
+
+        let listening = false;
+        let ws, audioCtx, processor, playbackCtx, audioQueueTime;
+        let activeSources = []; // track active audio nodes
+        let speaking = false;
+        function stopPlayback() {
+            audioQueueTime = playbackCtx ? playbackCtx.currentTime : 0;
+            activeSources.forEach(src => { try { src.stop(); } catch { } });
+            activeSources = [];
+            speaking = false;
+
+        }
+
+        async function startConversation() {
+            status.innerText = "Connecting...";
+            micBtn.classList.replace("bg-blue-500", "bg-red-500");
+
+            ws = new WebSocket(`ws://${location.host}`);
+            ws.binaryType = "arraybuffer";
+
+            ws.onopen = async () => {
+                console.log("Connected to proxy");
+                status.innerText = "Listening...";
+
+                // mic capture
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                });
+
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const src = audioCtx.createMediaStreamSource(stream);
+
+                processor = audioCtx.createScriptProcessor(4096, 1, 1);
+                src.connect(processor);
+                processor.connect(audioCtx.destination);
+
+                processor.onaudioprocess = (e) => {
+                    const input = e.inputBuffer.getChannelData(0);
+                    // 🔎 VAD: detect if user starts talking while AI speaking
+                    if (speaking) {
+                        const rms = Math.sqrt(input.reduce((s, v) => s + v * v, 0) / input.length);
+                        if (rms > 0.02) {  // adjust threshold depending on mic sensitivity
+                            console.log("🚨 User started speaking → interrupt AI");
+                            stopPlayback();
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify("STOP")); // tell server to cut Gemini response
+                            }
+                        }
+                    }
+                    const buf = new ArrayBuffer(input.length * 2);
+                    const view = new DataView(buf);
+                    for (let i = 0; i < input.length; i++) {
+                        let s = Math.max(-1, Math.min(1, input[i]));
+                        view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+                    }
+                    if (ws.readyState === WebSocket.OPEN) ws.send(buf);
+                };
+
+                // playback
+                playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                audioQueueTime = 0;
+                function saveMessage(role, text) {
+                    const history = JSON.parse(localStorage.getItem("chat_history") || "[]");
+
+                    history.push({
+                        role,
+                        text,
+                        time: new Date().toISOString()
+                    });
+
+                    localStorage.setItem("chat_history", JSON.stringify(history));
+                }
+                // ws.onmessage = (evt) => {
+                //     if (typeof evt.data === "string") {
+                //         try {
+                //             const msg = JSON.parse(evt.data);
+                //             if (msg.type === "text") console.log("AI:", msg.text);
+                //         } catch { }
+                //         return;
+                //     }
+                //     speaking = true; // AI is talking
+                //     // decode PCM audio
+                //     const pcmBytes = new Int16Array(evt.data);
+                //     const float32 = new Float32Array(pcmBytes.length);
+                //     for (let i = 0; i < pcmBytes.length; i++) float32[i] = pcmBytes[i] / 32768;
+
+                //     const buffer = playbackCtx.createBuffer(1, float32.length, 24000);
+                //     buffer.copyToChannel(float32, 0);
+
+                //     const src = playbackCtx.createBufferSource();
+                //     src.buffer = buffer;
+                //     src.connect(playbackCtx.destination);
+                //     activeSources.push(src);
+
+                //     if (audioQueueTime < playbackCtx.currentTime) audioQueueTime = playbackCtx.currentTime + 0.05;
+                //     src.start(audioQueueTime);
+                //     audioQueueTime += buffer.duration;
+
+                //     src.onended = () => {
+                //         activeSources = activeSources.filter(s => s !== src);
+                //         if (activeSources.length === 0) speaking = false;
+                //     };
+                // };
+
+                ws.onmessage = (evt) => {
+
+                    // 🔹 TEXT messages from server (AI transcript)
+                    if (typeof evt.data === "string") {
+                        try {
+                            const msg = JSON.parse(evt.data);
+
+                            if (msg.type === "text") {
+                                console.log("AI:", msg.text);
+
+                                // ✅ Save AI text to localStorage
+                                saveMessage("ai", msg.text);
+                            }
+
+                            if (msg.type === "error") {
+                                console.error("Server error:", msg.error);
+                            }
+
+                        } catch (err) {
+                            console.error("Invalid JSON message:", err);
+                        }
+                        return;
+                    }
+
+                    // 🔊 AUDIO STREAM (unchanged)
+                    speaking = true;
+
+                    const pcmBytes = new Int16Array(evt.data);
+                    const float32 = new Float32Array(pcmBytes.length);
+
+                    for (let i = 0; i < pcmBytes.length; i++) {
+                        float32[i] = pcmBytes[i] / 32768;
+                    }
+
+                    const buffer = playbackCtx.createBuffer(1, float32.length, 24000);
+                    buffer.copyToChannel(float32, 0);
+
+                    const src = playbackCtx.createBufferSource();
+                    src.buffer = buffer;
+                    src.connect(playbackCtx.destination);
+                    activeSources.push(src);
+
+                    if (audioQueueTime < playbackCtx.currentTime) {
+                        audioQueueTime = playbackCtx.currentTime + 0.05;
+                    }
+
+                    src.start(audioQueueTime);
+                    audioQueueTime += buffer.duration;
+
+                    src.onended = () => {
+                        activeSources = activeSources.filter(s => s !== src);
+                        if (activeSources.length === 0) speaking = false;
+                    };
+                };
+
+            };
+
+            ws.onclose = () => {
+                console.log("Disconnected");
+                status.innerText = "Conversation ended";
+            };
+        }
+
+        function stopConversation() {
+            micBtn.classList.replace("bg-red-500", "bg-blue-500");
+            status.innerText = "Click mic to start";
+
+            if (processor) processor.disconnect();
+            if (audioCtx) audioCtx.close();
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+        }
+
+        micBtn.onclick = () => {
+            listening = !listening;
+            if (listening) {
+                stopPlayback(); // kill current AI speech
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify("STOP")); // tell server to stop Gemini
+                }
+                startConversation();
+            } else {
+                stopConversation();
+            }
+        };
+    </script>
+</body>
+
+
+</html>

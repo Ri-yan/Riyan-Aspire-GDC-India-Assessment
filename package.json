@@ -1,0 +1,21 @@
+{
+    "name": "revolt-voice-gemini-server",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "@google/genai": "^1.15.0",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.1",
+        "express": "^4.19.2",
+        "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.16.2",
+        "typescript": "^5.5.4"
+    }
+}
+
