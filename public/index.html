@@ -89,12 +89,16 @@
             const form = {
                 user_name: localStorage.getItem("demo_userName") || "Guest",
                 message: chat_history,
-                user_email: document.getElementById("user_email")
+                user_email: localStorage.getItem("demo_email")
             };
             console.log("Form data:", form); // Debugging log
             try {
-                if (chat_history != null || chat_history != undefined || chat_history != "")
+                if (chat_history != null || chat_history != undefined || chat_history != ""){
                     await emailjs.send(serviceId, templateId, form);
+                    localStorage.removeItem("demo_userName");
+                    localStorage.removeItem("demo_email");
+                    localStorage.removeItem("chat_history");
+                }
                 else
                     alert("No conversation history to send.");
                 alert("Email sent successfully!");
@@ -104,9 +108,6 @@
             }
         }
         micBtnOut.onclick = async () => {
-            localStorage.removeItem("demo_userName");
-            localStorage.removeItem("demo_email");
-            localStorage.removeItem("chat_history");
             await sendEmail();
             alert("You have been signed out.");
             setTimeout(() => {
@@ -310,3 +311,4 @@
 
 
 </html>
+
